@@ -40,4 +40,7 @@ class MainActivity : AppCompatActivity() {
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
     }
+
+    // this is master branch
+
 }
