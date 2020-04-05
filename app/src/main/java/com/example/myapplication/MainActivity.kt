@@ -36,4 +36,8 @@ class MainActivity : AppCompatActivity() {
             else -> super.onOptionsItemSelected(item)
         }
     }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+    }
 }
