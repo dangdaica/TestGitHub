@@ -1,22 +1,25 @@
 package com.example.myapplication
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Matrix
 import android.os.Bundle
+import android.util.Log
 import android.util.Size
+
 import android.view.*
 import androidx.appcompat.app.AppCompatActivity
 import android.widget.Toast
-import androidx.camera.core.CameraX
-import androidx.camera.core.Preview
-import androidx.camera.core.PreviewConfig
+import androidx.camera.core.*
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import com.google.firebase.ml.vision.FirebaseVision
 import com.google.firebase.ml.vision.common.FirebaseVisionImage
+import java.nio.ByteBuffer
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 // This is an arbitrary number we are using to keep track of the permission
 // request. Where an app has multiple context for requesting permission,
@@ -29,13 +32,15 @@ class MainActivity : AppCompatActivity(), LifecycleOwner {
     private val executor = Executors.newSingleThreadExecutor()
     private lateinit var viewFinder: TextureView
 
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+         setContentView(R.layout.temp_main)
 
         // Add this at the end of onCreate function
 
-        viewFinder = findViewById(R.id.view_finder)
+        viewFinder = findViewById(R.id.my_view_finder)
 
         // Request camera permissions
         if (allPermissionsGranted()) {
@@ -79,11 +84,29 @@ class MainActivity : AppCompatActivity(), LifecycleOwner {
             updateTransform()
         }
 
+        // Add this before CameraX.bindToLifecycle
+
+        // Setup image analysis pipeline that computes average pixel luminance
+        val analyzerConfig = ImageAnalysisConfig.Builder().apply {
+            // In our analysis, we care more about the latest image than
+            // analyzing *every* image
+            setImageReaderMode(
+                ImageAnalysis.ImageReaderMode.ACQUIRE_LATEST_IMAGE)
+        }.build()
+
+        // Build the image analysis use case and instantiate our analyzer
+        val analyzerUseCase = ImageAnalysis(analyzerConfig).apply {
+            Log.d("vandang.ng", "analyze")
+            setAnalyzer(executor,YourImageAnalyzer())
+        }
+
+
+
         // Bind use cases to lifecycle
         // If Android Studio complains about "this" being not a LifecycleOwner
         // try rebuilding the project or updating the appcompat dependency to
         // version 1.1.0 or higher.
-        CameraX.bindToLifecycle(this, preview)
+        CameraX.bindToLifecycle(this,analyzerUseCase, preview)
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -159,6 +182,43 @@ class MainActivity : AppCompatActivity(), LifecycleOwner {
 
         // Finally, apply transformations to our TextureView
         viewFinder.setTransform(matrix)
+    }
+
+    private class LuminosityAnalyzer : ImageAnalysis.Analyzer {
+        private var lastAnalyzedTimestamp = 0L
+
+        /**
+         * Helper extension function used to extract a byte array from an
+         * image plane buffer
+         */
+        private fun ByteBuffer.toByteArray(): ByteArray {
+            rewind()    // Rewind the buffer to zero
+            val data = ByteArray(remaining())
+            get(data)   // Copy the buffer into a byte array
+            return data // Return the byte array
+        }
+
+        override fun analyze(image: ImageProxy, rotationDegrees: Int) {
+            Log.d("CameraXApp", "check now !!!!!!!!!!!!!!!!!!!")
+            val currentTimestamp = System.currentTimeMillis()
+            // Calculate the average luma no more often than every second
+            if (currentTimestamp - lastAnalyzedTimestamp >=
+                TimeUnit.SECONDS.toMillis(1)) {
+                // Since format in ImageAnalysis is YUV, image.planes[0]
+                // contains the Y (luminance) plane
+                val buffer = image.planes[0].buffer
+                // Extract image data from callback object
+                val data = buffer.toByteArray()
+                // Convert the data into an array of pixel values
+                val pixels = data.map { it.toInt() and 0xFF }
+                // Compute average luminance for the image
+                val luma = pixels.average()
+                // Log the new luma value
+                Log.d("CameraXApp", "Average luminosity: $luma")
+                // Update timestamp of last analyzed frame
+                lastAnalyzedTimestamp = currentTimestamp
+            }
+        }
     }
 
 }

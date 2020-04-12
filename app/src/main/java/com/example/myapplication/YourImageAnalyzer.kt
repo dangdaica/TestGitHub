@@ -1,19 +1,54 @@
 package com.example.myapplication
 
+import android.content.Context
+import android.util.Log
+import android.widget.Toast
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
+import com.google.firebase.ml.vision.FirebaseVision
 import com.google.firebase.ml.vision.common.FirebaseVisionImage
+import com.google.firebase.ml.vision.common.FirebaseVisionImageMetadata
+import java.util.concurrent.TimeUnit
 
-private class YourImageAnalyzer : ImageAnalysis.Analyzer {
+class YourImageAnalyzer  : ImageAnalysis.Analyzer {
+
+    private var lastAnalyzedTimestamp = 0L
+     private fun degreesToFirebaseRotation(degrees: Int): Int = when(degrees) {
+         0 -> FirebaseVisionImageMetadata.ROTATION_0
+         90 -> FirebaseVisionImageMetadata.ROTATION_90
+         180 -> FirebaseVisionImageMetadata.ROTATION_180
+         270 -> FirebaseVisionImageMetadata.ROTATION_270
+         else -> throw Exception("Rotation must be 0, 90, 180, or 270.")
+     }
     override fun analyze(imageProxy: ImageProxy?, rotationDegrees: Int) {
+        val currentTimestamp = System.currentTimeMillis()
+        if (currentTimestamp - lastAnalyzedTimestamp <
+            TimeUnit.SECONDS.toMillis(1)){
+            return
+        }
+        lastAnalyzedTimestamp = currentTimestamp
+        Log.d("vandang.ng", "Start analyzing !!!!!!!!!!!!!!!!!!!!! ")
 
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
         val mediaImage = imageProxy?.image
-       // val imageRotation = degreesToFirebaseRotation(rotationDegrees)
+        val imageRotation = degreesToFirebaseRotation(rotationDegrees)
         if (mediaImage != null) {
-            val image = FirebaseVisionImage.fromMediaImage(mediaImage, rotationDegrees)
-            // Pass image to an ML Kit Vision API
-            // ...
+            val image = FirebaseVisionImage.fromMediaImage(mediaImage, imageRotation)
+            val labeler = FirebaseVision.getInstance().getOnDeviceImageLabeler()
+            labeler.processImage(image).
+                addOnSuccessListener { labels ->
+                    for (label in labels) {
+                        val text = label.text
+                        val entityId = label.entityId
+                        val confidence = label.confidence
+                        Log.d("vandang.ng", "Subject is  " + text   +  " confidence " + confidence)
+
+                    }
+
+                    Log.d("vandang.ng", "Eng analyzing !!!!!!!!!!!!!!!!!!!!! ")
+                }
+                .addOnFailureListener { e->
+                        Log.d("vandang.ng", "text" + e)
+                }
         }
 
     }
