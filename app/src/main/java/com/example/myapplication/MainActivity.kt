@@ -35,7 +35,7 @@ class MainActivity : AppCompatActivity(), LifecycleOwner {
 
         // Add this at the end of onCreate function
 
-        viewFinder = findViewById(R.id.view)
+        viewFinder = findViewById(R.id.view_finder)
 
         // Request camera permissions
         if (allPermissionsGranted()) {
