@@ -1,8 +1,6 @@
 package com.example.myapplication
 
-import android.content.Context
 import android.util.Log
-import android.widget.Toast
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import com.google.firebase.ml.vision.FirebaseVision
