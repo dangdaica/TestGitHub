@@ -1,6 +1,9 @@
 package com.example.myapplication
 
+import android.content.Context
 import android.util.Log
+import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import com.google.firebase.ml.vision.FirebaseVision
@@ -8,8 +11,13 @@ import com.google.firebase.ml.vision.common.FirebaseVisionImage
 import com.google.firebase.ml.vision.common.FirebaseVisionImageMetadata
 import java.util.concurrent.TimeUnit
 
-class YourImageAnalyzer  : ImageAnalysis.Analyzer {
-
+class YourImageAnalyzer (label :LinearLayout , context : Context)  : ImageAnalysis.Analyzer {
+    private var mLabel : LinearLayout
+    private val mContext : Context
+    init {
+        mLabel = label
+        mContext = context
+    }
     private var lastAnalyzedTimestamp = 0L
      private fun degreesToFirebaseRotation(degrees: Int): Int = when(degrees) {
          0 -> FirebaseVisionImageMetadata.ROTATION_0
@@ -21,7 +29,7 @@ class YourImageAnalyzer  : ImageAnalysis.Analyzer {
     override fun analyze(imageProxy: ImageProxy?, rotationDegrees: Int) {
         val currentTimestamp = System.currentTimeMillis()
         if (currentTimestamp - lastAnalyzedTimestamp <
-            TimeUnit.SECONDS.toMillis(1)){
+            TimeUnit.SECONDS.toMillis(7)){
             return
         }
         lastAnalyzedTimestamp = currentTimestamp
@@ -34,11 +42,20 @@ class YourImageAnalyzer  : ImageAnalysis.Analyzer {
             val labeler = FirebaseVision.getInstance().getOnDeviceImageLabeler()
             labeler.processImage(image).
                 addOnSuccessListener { labels ->
+                    mLabel.removeAllViewsInLayout()
                     for (label in labels) {
-                        val text = label.text
-                        val entityId = label.entityId
-                        val confidence = label.confidence
-                        Log.d("vandang.ng", "Subject is  " + text   +  " confidence " + confidence)
+                        Log.d("vandang.ng", " this is  " + label.text )
+                        val textView = TextView(mContext)
+                        textView.text = label.text
+                        textView.textSize = mContext.resources.getDimension(R.dimen.text_size)
+                        textView.setTextColor(mContext.resources.getColor(R.color.colorPrimaryDark))
+                        val params = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                            LinearLayout.LayoutParams.MATCH_PARENT
+                        )
+                        textView.layoutParams = params
+                        mLabel.addView(textView)
+
 
                     }
 
